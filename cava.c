@@ -459,30 +459,36 @@ as of 0.4.0 all options are specified in config file, see in '/home/username/.co
 
             case OUTPUT_RAW:
             case OUTPUT_NORITAKE:
-                if (strcmp(p.raw_target, "/dev/stdout") != 0) {
-                    int fptest;
-                    // checking if file exists
-                    if (access(p.raw_target, F_OK) != -1) {
-                        // file exists, testopening in case it's a fifo
-                        fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
-
-                        if (fptest == -1) {
-                            fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
-                            exit(1);
-                        }
-                    } else {
-                        printf("creating fifo %s\n", p.raw_target);
-                        if (mkfifo(p.raw_target, 0664) == -1) {
-                            fprintf(stderr, "could not create fifo %s\n", p.raw_target);
-                            exit(1);
-                        }
-                        // fifo needs to be open for reading in order to write to it
-                        fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
-                    }
-                    fp = open(p.raw_target, O_WRONLY | O_NONBLOCK | O_CREAT, 0644);
+                if (p.raw_target_fd != -1) {
+                    fp = p.raw_target_fd;
+                    fprintf(stderr, "using file descriptor %d for writing\n", fp);
                 } else {
-                    fp = fileno(stdout);
+                    if (strcmp(p.raw_target, "/dev/stdout") != 0) {
+                        int fptest;
+                        // checking if file exists
+                        if (access(p.raw_target, F_OK) != -1) {
+                            // file exists, testopening in case it's a fifo
+                            fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
+
+                            if (fptest == -1) {
+                                fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
+                                exit(1);
+                            }
+                        } else {
+                            printf("creating fifo %s\n", p.raw_target);
+                            if (mkfifo(p.raw_target, 0664) == -1) {
+                                fprintf(stderr, "could not create fifo %s\n", p.raw_target);
+                                exit(1);
+                            }
+                            // fifo needs to be open for reading in order to write to it
+                            fptest = open(p.raw_target, O_RDONLY | O_NONBLOCK, 0644);
+                        }
+                        fp = open(p.raw_target, O_WRONLY | O_NONBLOCK | O_CREAT, 0644);
+                    } else {
+                        fp = fileno(stdout);
+                    }
                 }
+
                 if (fp == -1) {
                     fprintf(stderr, "could not open file %s for writing\n", p.raw_target);
                     exit(1);
